@@ -3,7 +3,7 @@
 import { Inter } from 'next/font/google'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import React, { useState, useEffect, memo } from 'react'
 import { FaStar } from 'react-icons/fa6'
 import { IoIosArrowBack, IoIosArrowForward, IoIosArrowUp, IoIosHeartEmpty } from 'react-icons/io'
@@ -30,9 +30,10 @@ interface IProduct {
 
 const Page = () => {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { addToCart: contextAddToCart } = useCart();
     const { isAuthenticated } = useAuthStore();
-    
+
     const [selectedCategories, setSelectedCategories] = useState<string[]>([])
     const [selectedBrands, setSelectedBrands] = useState<string[]>([])
     const [selectedFeatures, setSelectedFeatures] = useState<string[]>([])
@@ -47,6 +48,23 @@ const Page = () => {
     const [totalItems, setTotalItems] = useState(0);
     const [page, setPage] = useState(1);
     const [error, setError] = useState<string | null>(null);
+
+    // Search functionality
+    const [searchQuery, setSearchQuery] = useState<string>("");
+    const [searchCategory, setSearchCategory] = useState<string>("all");
+
+    // Load search params from URL on mount
+    useEffect(() => {
+        const search = searchParams.get('search');
+        const category = searchParams.get('category');
+
+        if (search) {
+            setSearchQuery(decodeURIComponent(search));
+        }
+        if (category) {
+            setSearchCategory(decodeURIComponent(category));
+        }
+    }, [searchParams]);
 
     const categories = [
         { name: "Mobile accessory" },
@@ -86,7 +104,7 @@ const Page = () => {
             try {
                 const params = new URLSearchParams();
                 params.set('page', page.toString());
-                params.set('limit', '10');
+                params.set('limit', '100');
                 if (sortOption) params.set('sort', sortOption);
                 if (priceRange.min > 0) params.set('minPrice', priceRange.min.toString());
                 if (priceRange.max < 999999) params.set('maxPrice', priceRange.max.toString());
@@ -96,8 +114,26 @@ const Page = () => {
                 const response = await fetch(`/api/products?${params.toString()}`);
                 const data = await response.json();
                 if (data.success) {
-                    setProducts(data.data);
-                    setTotalItems(data.pagination.total);
+                    let filteredProducts = data.data;
+
+                    // Filter by search query (product name)
+                    if (searchQuery.trim()) {
+                        filteredProducts = filteredProducts.filter(product =>
+                            product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            product.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            product.brand?.toLowerCase().includes(searchQuery.toLowerCase())
+                        );
+                    }
+
+                    // Filter by search category
+                    if (searchCategory !== 'all') {
+                        filteredProducts = filteredProducts.filter(product =>
+                            product.category.toLowerCase() === searchCategory.toLowerCase()
+                        );
+                    }
+
+                    setProducts(filteredProducts);
+                    setTotalItems(filteredProducts.length);
                 } else {
                     setError('Failed to fetch products');
                 }
@@ -110,7 +146,7 @@ const Page = () => {
         };
 
         fetchProducts();
-    }, [sortOption, priceRange, selectedCategories, selectedBrands, page]);
+    }, [sortOption, priceRange, selectedCategories, selectedBrands, page, searchQuery, searchCategory]);
 
     const handleCategoryChange = (category: string) => {
         setSelectedCategories((prev) =>
@@ -392,9 +428,58 @@ const Page = () => {
             </main>
             {/* main page product list */}
             <main className='w-full space-y-7'>
+                {/* search bar */}
+                <section className='w-full h-20 flex items-center gap-4 bg-white border border-[#DEE2E7] rounded-md px-4'>
+                    <div className='flex items-center gap-3 w-full'>
+                        <input
+                            type='text'
+                            placeholder='Search products by name, brand, or description...'
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className={`${inter.className} flex-1 h-10 border border-[#DEE2E7] rounded-md pl-3 text-[16px] focus:outline-none focus:ring-2 focus:ring-[#0D6EFD] focus:border-transparent`}
+                        />
+                        <select
+                            value={searchCategory}
+                            onChange={(e) => setSearchCategory(e.target.value)}
+                            className={`${inter.className} w-40 h-10 px-3 border border-[#DEE2E7] rounded-md text-[16px] focus:outline-none focus:ring-2 focus:ring-[#0D6EFD] cursor-pointer`}
+                        >
+                            <option value="all">All Categories</option>
+                            <option value="Electronics">Electronics</option>
+                            <option value="Clothing">Clothing</option>
+                            <option value="Accessories">Accessories</option>
+                        </select>
+                        <button
+                            onClick={() => setPage(1)}
+                            className={`${inter.className} h-10 px-6 bg-[#0D6EFD] text-white rounded-md hover:bg-[#0056b3] font-medium`}
+                        >
+                            Search
+                        </button>
+                        {searchQuery && (
+                            <button
+                                onClick={() => {
+                                    setSearchQuery("");
+                                    setSearchCategory("all");
+                                    setPage(1);
+                                }}
+                                className={`${inter.className} h-10 px-4 border border-[#DEE2E7] text-[#8B96A5] rounded-md hover:bg-[#F8F9FA]`}
+                            >
+                                Clear
+                            </button>
+                        )}
+                    </div>
+                </section>
+
                 {/* top */}
                 <section className='w-full h-15.5 flex justify-between bg-white border border-[#DEE2E7]'>
-                    <p className={`${inter.className} text-[16px] font-normal text-[#1C1C1C] ml-4 my-auto`}>{totalItems} items found</p>
+                    <p className={`${inter.className} text-[16px] font-normal text-[#1C1C1C] ml-4 my-auto`}>
+                        {searchQuery ? (
+                            <span>
+                                Search results for "<span className='font-semibold'>{searchQuery}</span>": {totalItems} items found
+                            </span>
+                        ) : (
+                            <span>{totalItems} items found</span>
+                        )}
+                    </p>
                     <div className='flex justify-between items-center gap-4 mr-5'>
                         <div className='flex justify-center'>
                             <input type='checkbox' className='w-4 h-4 mt-1 ml-2 text-[#0D6EFD] cursor-pointer' />
