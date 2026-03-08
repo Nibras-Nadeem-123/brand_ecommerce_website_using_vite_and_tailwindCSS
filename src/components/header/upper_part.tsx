@@ -2,25 +2,50 @@
 import { Inter } from 'next/font/google'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { BsFillChatLeftTextFill, BsPersonFill } from 'react-icons/bs'
 import { GoHeartFill } from 'react-icons/go'
 import { HiOutlineShoppingBag } from 'react-icons/hi2'
 import { MdShoppingCart } from 'react-icons/md'
+import { useAuthStore } from '@/store/authStore'
+import { useCartStore } from '@/store/cartStore'
 
 const inter = Inter({ subsets: ['latin'], weight: '400' })
 
 const UpperPart = () => {
-    const router = useRouter()
+    const router = useRouter();
+    const { user, isAuthenticated, logout, fetchUser } = useAuthStore();
+    const { cart } = useCartStore();
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchCategory, setSearchCategory] = useState('all');
+
+    useEffect(() => {
+        fetchUser();
+    }, []);
 
     const handleSearch = () => {
-        // Implement search functionality here
-        alert('Search button clicked');
-    }
+        if (searchQuery.trim()) {
+            router.push(`/products?search=${encodeURIComponent(searchQuery)}&category=${searchCategory}`);
+        }
+    };
+
+    const handleKeyPress = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            handleSearch();
+        }
+    };
 
     const handleCart = () => {
         router.push('/cart');
-    } 
+    };
+
+    const handleLogout = async () => {
+        await logout();
+        router.push('/');
+    };
+
+    const cartItemCount = cart?.items?.reduce((total, item) => total + item.quantity, 0) || 0;
+
     return (
         <div className='flex bg-white h-21.5 text-white px-35.5'>
             {/* Brand Logo */}
@@ -49,31 +74,77 @@ const UpperPart = () => {
                 {/* input field */}
                 <input
                     placeholder='Search'
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyPress={handleKeyPress}
                     className={`${inter.className} w-105.25 h-9.75 border-r border-[#0D6EFD] rounded-l-md pl-3 text-[#8B96A5] text-[16px]
                         focus:outline-none focus:ring-2 focus:ring-[#0D6EFD] focus:border-transparent focus:h-9 focus:w-105 focus:mt-px
                         `}
                 />
                 {/* category field */}
-                <select className={`${inter.className} w-36.25 h-10 p-2 text-[#1C1C1C] text-[16px] focus:outline-none focus:ring-2 focus:ring-[#0D6EFD] focus:border-transparent focus:h-9 focus:mt-px focus:w-36 cursor-pointer `}>
-                    <option className='p-2 text-[#1C1C1C] text-[16px] focus:outline-none focus:ring-2 focus:ring-[#0D6EFD] focus:border-transparent focus:h-9.25 focus:w-36 cursor-pointer' value="option1">All Categories</option>
-                    <option className='p-2 text-[#1C1C1C] text-[16px] focus:outline-none focus:ring-2 focus:ring-[#0D6EFD] focus:border-transparent focus:h-9.25 focus:w-36 cursor-pointer ' value="option2">Clothing</option>
-                    <option className='p-2 text-[#1C1C1C] text-[16px] focus:outline-none focus:ring-2 focus:ring-[#0D6EFD] focus:border-transparent focus:h-9.25 focus:w-36 cursor-pointer ' value="option3">Footwear</option>
-                    <option className='p-2 text-[#1C1C1C] text-[16px] focus:outline-none focus:ring-2 focus:ring-[#0D6EFD] focus:border-transparent focus:h-9.25 focus:w-36 cursor-pointer ' value="option4">Accessories</option>
+                <select 
+                    value={searchCategory}
+                    onChange={(e) => setSearchCategory(e.target.value)}
+                    className={`${inter.className} w-36.25 h-10 p-2 text-[#1C1C1C] text-[16px] focus:outline-none focus:ring-2 focus:ring-[#0D6EFD] focus:border-transparent focus:h-9 focus:mt-px focus:w-36 cursor-pointer `}
+                >
+                    <option className='p-2 text-[#1C1C1C] text-[16px] focus:outline-none focus:ring-2 focus:ring-[#0D6EFD] focus:border-transparent focus:h-9.25 focus:w-36 cursor-pointer' value="all">All Categories</option>
+                    <option className='p-2 text-[#1C1C1C] text-[16px] focus:outline-none focus:ring-2 focus:ring-[#0D6EFD] focus:border-transparent focus:h-9.25 focus:w-36 cursor-pointer ' value="Electronics">Electronics</option>
+                    <option className='p-2 text-[#1C1C1C] text-[16px] focus:outline-none focus:ring-2 focus:ring-[#0D6EFD] focus:border-transparent focus:h-9.25 focus:w-36 cursor-pointer ' value="Clothing">Clothing</option>
+                    <option className='p-2 text-[#1C1C1C] text-[16px] focus:outline-none focus:ring-2 focus:ring-[#0D6EFD] focus:border-transparent focus:h-9.25 focus:w-36 cursor-pointer ' value="Accessories">Accessories</option>
                 </select>
                 {/* button */}
-                <button onClick={handleSearch} className='w-25 h-9.75 bg-[#0D6EFD] rounded-r-sm text-white text-[16px] font-medium cursor-pointer'>
+                <button onClick={handleSearch} className='w-25 h-9.75 bg-[#0D6EFD] rounded-r-sm text-white text-[16px] font-medium cursor-pointer hover:bg-[#0056b3]'>
                     <p className={`${inter.className} font-bold mx-auto`}>Search</p>
                 </button>
             </section>
 
             {/* icons */}
             <section className='flex text-center items-center w-60 h-10.25 mt-6.25 ml-4.5'>
-                <button className='w-full h-10.25 cursor-pointer'>
-                    <div className='text-[#8B96A5] hover:text-[#0D6EFD] focus:text-[#0D6EFD] focus:underline'>
-                        <BsPersonFill className='w-5 h-4.75 mx-auto' />
-                        <p className={`${inter.className} text-[12px] text-center items-center`}>Profile</p>
-                    </div>
-                </button>
+                {isAuthenticated ? (
+                    <>
+                        <button className='w-full h-10.25 cursor-pointer relative'>
+                            <div className='text-[#8B96A5] hover:text-[#0D6EFD] focus:text-[#0D6EFD] focus:underline'>
+                                <BsPersonFill className='w-5 h-4.75 mx-auto' />
+                                <p className={`${inter.className} text-[12px] text-center items-center`}>{user?.name?.split(' ')[0] || 'Profile'}</p>
+                            </div>
+                        </button>
+                        {user?.role === 'admin' && (
+                            <button 
+                                onClick={() => router.push('/admin')}
+                                className='w-full h-10.25 cursor-pointer'
+                            >
+                                <div className='text-[#8B96A5] hover:text-[#0D6EFD] focus:text-[#0D6EFD] focus:underline'>
+                                    <p className={`${inter.className} text-[12px] text-center items-center`}>Admin</p>
+                                </div>
+                            </button>
+                        )}
+                        <button onClick={handleLogout} className='w-full h-10.25 cursor-pointer'>
+                            <div className='text-[#8B96A5] hover:text-[#FA3434] focus:text-[#FA3434] focus:underline'>
+                                <p className={`${inter.className} text-[12px] text-center items-center`}>Logout</p>
+                            </div>
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        <button 
+                            onClick={() => router.push('/login')}
+                            className='w-full h-10.25 cursor-pointer'
+                        >
+                            <div className='text-[#8B96A5] hover:text-[#0D6EFD] focus:text-[#0D6EFD] focus:underline'>
+                                <BsPersonFill className='w-5 h-4.75 mx-auto' />
+                                <p className={`${inter.className} text-[12px] text-center items-center`}>Login</p>
+                            </div>
+                        </button>
+                        <button 
+                            onClick={() => router.push('/register')}
+                            className='w-full h-10.25 cursor-pointer'
+                        >
+                            <div className='text-[#8B96A5] hover:text-[#0D6EFD] focus:text-[#0D6EFD] focus:underline'>
+                                <p className={`${inter.className} text-[12px] text-center items-center`}>Sign Up</p>
+                            </div>
+                        </button>
+                    </>
+                )}
                 <button className='w-full h-10.25 cursor-pointer'>
                     <div className='text-[#8B96A5] hover:text-[#0D6EFD] focus:text-[#0D6EFD] focus:underline'>
                         <BsFillChatLeftTextFill className='w-5 h-4.75 mx-auto' />
@@ -86,10 +157,15 @@ const UpperPart = () => {
                         <p className={`${inter.className} text-[12px] text-center items-center`}>Orders</p>
                     </div>
                 </button>
-                <button onClick={handleCart} className='w-full h-10.25 cursor-pointer'>
+                <button onClick={handleCart} className='w-full h-10.25 cursor-pointer relative'>
                     <div className='text-[#8B96A5] hover:text-[#0D6EFD] focus:text-[#0D6EFD] focus:underline'>
                         <MdShoppingCart className='w-5 h-4.75 mx-auto' />
                         <p className={`${inter.className} text-[12px] text-center font-extralight items-center`}>My cart</p>
+                        {cartItemCount > 0 && (
+                            <span className='absolute -top-1 -right-1 bg-[#FA3434] text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center'>
+                                {cartItemCount}
+                            </span>
+                        )}
                     </div>
                 </button>
             </section>

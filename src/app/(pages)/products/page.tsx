@@ -3,16 +3,36 @@
 import { Inter } from 'next/font/google'
 import Image from 'next/image'
 import Link from 'next/link'
-import React, { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import React, { useState, useEffect, memo } from 'react'
 import { FaStar } from 'react-icons/fa6'
 import { IoIosArrowBack, IoIosArrowForward, IoIosArrowUp, IoIosHeartEmpty } from 'react-icons/io'
 import { IoGridSharp } from 'react-icons/io5'
 import { VscThreeBars } from 'react-icons/vsc'
-import { memo } from 'react';
+import { useCartStore } from '@/store/cartStore';
+import { useAuthStore } from '@/store/authStore';
 
 const inter = Inter({ subsets: ['latin'], weight: '400' })
 
+interface IProduct {
+    _id: string;
+    name: string;
+    description: string;
+    price: number;
+    discountPrice?: number;
+    images: string[];
+    category: string;
+    brand?: string;
+    stock: number;
+    rating?: number;
+    numReviews?: number;
+}
+
 const Page = () => {
+    const router = useRouter();
+    const { addToCart } = useCartStore();
+    const { isAuthenticated } = useAuthStore();
+    
     const [selectedCategories, setSelectedCategories] = useState<string[]>([])
     const [selectedBrands, setSelectedBrands] = useState<string[]>([])
     const [selectedFeatures, setSelectedFeatures] = useState<string[]>([])
@@ -22,38 +42,11 @@ const Page = () => {
     const [featureSearch, setFeatureSearch] = useState<string>("");
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [sortOption, setSortOption] = useState<string>('name');
-
-    const handleCategoryChange = (category: string) => {
-        setSelectedCategories((prev) =>
-            prev.includes(category)
-                ? prev.filter((item) => item !== category)
-                : [...prev, category]
-        );
-    }
-
-    const handleBrandChange = (brand: string) => {
-        setSelectedBrands((prev) =>
-            prev.includes(brand)
-                ? prev.filter((item) => item !== brand)
-                : [...prev, brand]
-        );
-    }
-
-    const handleFeatureChange = (feature: string) => {
-        setSelectedFeatures((prev) =>
-            prev.includes(feature)
-                ? prev.filter((item) => item !== feature)
-                : [...prev, feature]
-        );
-    }
-
-    const handlePriceChange = (type: 'min' | 'max', value: number) => {
-        setPriceRange((prev) => ({ ...prev, [type]: value }));
-    }
-
-    const handleConditionChange = (condition: string) => {
-        setSelectedCondition(condition);
-    }
+    const [products, setProducts] = useState<IProduct[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [totalItems, setTotalItems] = useState(0);
+    const [page, setPage] = useState(1);
+    const [error, setError] = useState<string | null>(null);
 
     const categories = [
         { name: "Mobile accessory" },
@@ -85,148 +78,90 @@ const Page = () => {
         { name: "Old items" },
     ]
 
-    const products = [
-        {
-            name: "Canon Cmera EOS 2000, Black 10x zoom",
-            price: "1128.00",
-            disc_price: "998.00",
-            image: "/smartphone3.png",
-            rating: 7.5,
-            description: "Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua",
-            order: "154"
-        },
-        {
-            name: "GoPro HERO6 4K Action Camera - Black",
-            price: "1128.00",
-            disc_price: "998.00",
-            image: "/canon_camreras.png",
-            rating: 7.5,
-            description: "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit ",
-            order: "154"
-        },
-        {
-            name: "GoPro HERO6 4K Action Camera - Black",
-            price: "1128.00",
-            disc_price: "998.00",
-            image: "/smartphones.png",
-            rating: 7.5,
-            description: "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit ",
-            order: "154"
-        },
-        {
-            name: "GoPro HERO6 4K Action Camera - Black",
-            price: "1128.00",
-            disc_price: "998.00",
-            image: "/laptops.png",
-            rating: 7.5,
-            description: "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit ",
-            order: "154"
-        },
-        {
-            name: "GoPro HERO6 4K Action Camera - Black",
-            price: "1128.00",
-            disc_price: "998.00",
-            image: "/smart_watches.png",
-            rating: 7.5,
-            description: "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit ",
-            order: "154"
-        },
-        {
-            name: "GoPro HERO6 4K Action Camera - Black",
-            price: "1128.00",
-            disc_price: "998.00",
-            image: "/headphone2.png",
-            rating: 7.5,
-            description: "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit ",
-            order: "154"
-        },
-    ]
+    // Fetch products from API
+    useEffect(() => {
+        const fetchProducts = async () => {
+            setIsLoading(true);
+            setError(null);
+            try {
+                const params = new URLSearchParams();
+                params.set('page', page.toString());
+                params.set('limit', '10');
+                if (sortOption) params.set('sort', sortOption);
+                if (priceRange.min > 0) params.set('minPrice', priceRange.min.toString());
+                if (priceRange.max < 999999) params.set('maxPrice', priceRange.max.toString());
+                if (selectedCategories.length > 0) params.set('category', selectedCategories.join(','));
+                if (selectedBrands.length > 0) params.set('brand', selectedBrands.join(','));
 
-    const filteredProducts = products.filter((product) => {
-        const matchesCategory =
-            selectedCategories.length === 0 ||
-            selectedCategories.some((category) => product.name.includes(category));
-        const matchesBrand =
-            selectedBrands.length === 0 ||
-            selectedBrands.some((brand) => product.name.includes(brand));
-        const matchesFeature =
-            selectedFeatures.length === 0 ||
-            selectedFeatures.some((feature) => product.description.includes(feature));
-        const matchesPrice =
-            Number(product.disc_price) >= priceRange.min && Number(product.disc_price) <= priceRange.max;
-        const matchesCondition =
-            selectedCondition === 'Any' || product.description.includes(selectedCondition);
+                const response = await fetch(`/api/products?${params.toString()}`);
+                const data = await response.json();
+                if (data.success) {
+                    setProducts(data.data);
+                    setTotalItems(data.pagination.total);
+                } else {
+                    setError('Failed to fetch products');
+                }
+            } catch (err) {
+                setError('Failed to fetch products');
+                console.error(err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
 
-        return (
-            matchesCategory &&
-            matchesBrand &&
-            matchesFeature &&
-            matchesPrice &&
-            matchesCondition
+        fetchProducts();
+    }, [sortOption, priceRange, selectedCategories, selectedBrands, page]);
+
+    const handleCategoryChange = (category: string) => {
+        setSelectedCategories((prev) =>
+            prev.includes(category)
+                ? prev.filter((item) => item !== category)
+                : [...prev, category]
         );
-    });
+        setPage(1);
+    }
 
-    const sortedProducts = [...filteredProducts].sort((a, b) => {
-        if (sortOption === "priceLowHigh") {
-            return parseFloat(a.disc_price) - parseFloat(b.disc_price);
-        } else if (sortOption === "priceHighLow") {
-            return parseFloat(b.disc_price) - parseFloat(a.disc_price);
-        } else if (sortOption === "rating") {
-            return (b.rating || 0) - (a.rating || 0);
-        } else if (sortOption === "name") {
-            return a.name.localeCompare(b.name);
+    const handleBrandChange = (brand: string) => {
+        setSelectedBrands((prev) =>
+            prev.includes(brand)
+                ? prev.filter((item) => item !== brand)
+                : [...prev, brand]
+        );
+        setPage(1);
+    }
+
+    const handleFeatureChange = (feature: string) => {
+        setSelectedFeatures((prev) =>
+            prev.includes(feature)
+                ? prev.filter((item) => item !== feature)
+                : [...prev, feature]
+        );
+    }
+
+    const handlePriceChange = (type: 'min' | 'max', value: number) => {
+        setPriceRange((prev) => ({ ...prev, [type]: value }));
+    }
+
+    const handleConditionChange = (condition: string) => {
+        setSelectedCondition(condition);
+    }
+
+    const handleAddToCart = async (productId: string) => {
+        if (!isAuthenticated) {
+            router.push('/login');
+            return;
         }
-        return 0;
-    });
+        try {
+            await addToCart(productId, 1);
+            alert('Added to cart!');
+        } catch (err) {
+            console.error('Failed to add to cart:', err);
+        }
+    };
 
-    const MemoizedProductCard = memo(({ product }: { product: typeof products[0] }) => (
-        <div className='w-full flex gap-4 bg-white border border-[#DEE2E7] p-4'>
-            <div className='w-52.5 h-42.5 my-auto'>
-                <Image
-                    src={`/home${product.image}`}
-                    alt={product.name}
-                    height={185}
-                    width={185}
-                    className='w-full h-full'
-                />
-            </div>
-            <div className='flex flex-col justify-between'>
-                <div>
-                    <p className={`${inter.className} text-[16px] font-medium text-[#1C1C1C]`}>{product.name}</p>
-                    <div className='flex gap-4 items-center'>
-                        <p className={`${inter.className} text-[20px] font-semibold text-[#1C1C1C]`}>${product.disc_price}</p>
-                        <p className={`${inter.className} text-[16px] font-semibold text-[#8B96A5] line-through`}>${product.price}</p>
-                    </div>
-                    <div className='flex gap-4 items-center'>
-                        <div className='flex justify-center text-center items-center'>
-                            <FaStar className='w-4 h-4 mt-1 text-[#FF9017]' />
-                            <FaStar className='w-4 h-4 mt-1 text-[#FF9017]' />
-                            <FaStar className='w-4 h-4 mt-1 text-[#FF9017]' />
-                            <FaStar className='w-4 h-4 mt-1 text-[#FF9017]' />
-                            <FaStar className='w-4 h-4 mt-1 text-[#D4CDC5]' />
-                            <p className={`${inter.className} text-[16px] font-normal ml-1 mt-1 text-[#FF9017]`}>{product.rating} </p>
-                        </div>
-                        <div className='flex justify-center text-center items-center gap-1.5'>
-                            <span className='w-1.5 h-1.5 rounded-full bg-[#DEE2E7]'></span>
-                            <p className={`${inter.className} text-[16px] font-normal text-[#8B96A5]`}>{product.order} orders</p>
-                        </div>
-                        <div className='flex justify-center text-center items-center gap-1.5'>
-                            <span className='w-1.5 h-1.5 rounded-full bg-[#DEE2E7]'></span>
-                            <p className={`${inter.className} text-[16px] font-normal text-[#00B517]`}>Free Shipping</p>
-                        </div>
-                    </div>
-                    <p className={`${inter.className} text-[16px] font-normal text-[#505050]`}>{product.description}</p>
-                    <p className={`${inter.className} text-[16px] font-medium text-[#0D6EFD] mt-1 cursor-pointer`}>View details</p>
-                </div>
-            </div>
-            <div className='absolute left-10/12 ml-5 w-10 h-10 border border-[#DEE2E7] hover:shadow-sm hover:shadow-[#38383814] rounded-md'>
-                <IoIosHeartEmpty className='w-10 h-[18.35px] mx-auto mt-2 text-[#0D6EFD] cursor-pointer' />
-            </div>
-        </div>
-
-    ));
-
-    MemoizedProductCard.displayName = "MemoizedProductCard";
+    const handleViewDetails = (productId: string) => {
+        router.push(`/products/${productId}`);
+    };
 
     const filteredBrands = brands.filter((brand) =>
         brand.name.toLowerCase().includes(brandSearch.toLowerCase())
@@ -235,6 +170,72 @@ const Page = () => {
     const filteredFeatures = features.filter((feature) =>
         feature.name.toLowerCase().includes(featureSearch.toLowerCase())
     );
+
+    const MemoizedProductCard = memo(({ product }: { product: IProduct }) => {
+        const displayPrice = product.discountPrice || product.price;
+        const originalPrice = product.discountPrice ? product.price : null;
+        
+        return (
+            <div className='w-full flex gap-4 bg-white border border-[#DEE2E7] p-4'>
+                <div className='w-52.5 h-42.5 my-auto'>
+                    <Image
+                        src={product.images[0] || `/home/product_placeholder.png`}
+                        alt={product.name}
+                        height={185}
+                        width={185}
+                        className='w-full h-full object-cover'
+                    />
+                </div>
+                <div className='flex flex-col justify-between'>
+                    <div>
+                        <p className={`${inter.className} text-[16px] font-medium text-[#1C1C1C]`}>{product.name}</p>
+                        <div className='flex gap-4 items-center'>
+                            <p className={`${inter.className} text-[20px] font-semibold text-[#1C1C1C]`}>${displayPrice.toFixed(2)}</p>
+                            {originalPrice && (
+                                <p className={`${inter.className} text-[16px] font-semibold text-[#8B96A5] line-through`}>${originalPrice.toFixed(2)}</p>
+                            )}
+                        </div>
+                        <div className='flex gap-4 items-center'>
+                            <div className='flex justify-center text-center items-center'>
+                                <FaStar className='w-4 h-4 mt-1 text-[#FF9017]' />
+                                <FaStar className='w-4 h-4 mt-1 text-[#FF9017]' />
+                                <FaStar className='w-4 h-4 mt-1 text-[#FF9017]' />
+                                <FaStar className='w-4 h-4 mt-1 text-[#FF9017]' />
+                                <FaStar className='w-4 h-4 mt-1 text-[#D4CDC5]' />
+                                <p className={`${inter.className} text-[16px] font-normal ml-1 mt-1 text-[#FF9017]`}>{product.rating?.toFixed(1) || '0.0'} </p>
+                            </div>
+                            <div className='flex justify-center text-center items-center gap-1.5'>
+                                <span className='w-1.5 h-1.5 rounded-full bg-[#DEE2E7]'></span>
+                                <p className={`${inter.className} text-[16px] font-normal text-[#8B96A5]`}>{product.numReviews || 0} reviews</p>
+                            </div>
+                            <div className='flex justify-center text-center items-center gap-1.5'>
+                                <span className='w-1.5 h-1.5 rounded-full bg-[#DEE2E7]'></span>
+                                <p className={`${inter.className} text-[16px] font-normal text-[#00B517]`}>Free Shipping</p>
+                            </div>
+                        </div>
+                        <p className={`${inter.className} text-[16px] font-normal text-[#505050]`}>{product.description}</p>
+                        <p 
+                            className={`${inter.className} text-[16px] font-medium text-[#0D6EFD] mt-1 cursor-pointer hover:underline`}
+                            onClick={() => handleViewDetails(product._id)}
+                        >
+                            View details
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => handleAddToCart(product._id)}
+                        className={`${inter.className} w-32 h-10 mt-3 bg-[#0D6EFD] hover:bg-[#0056b3] text-white text-[14px] font-medium rounded-md cursor-pointer`}
+                    >
+                        Add to cart
+                    </button>
+                </div>
+                <div className='absolute left-10/12 ml-5 w-10 h-10 border border-[#DEE2E7] hover:shadow-sm hover:shadow-[#38383814] rounded-md'>
+                    <IoIosHeartEmpty className='w-10 h-[18.35px] mx-auto mt-2 text-[#0D6EFD] cursor-pointer' />
+                </div>
+            </div>
+        );
+    });
+
+    MemoizedProductCard.displayName = "MemoizedProductCard";
 
     return (
         <div className='flex justify-between gap-4 pt-10'>
@@ -318,15 +319,28 @@ const Page = () => {
                     <div className='flex justify-between mt-2'>
                         <div className='mt-2'>
                             <p className={`${inter.className} text-[16px] font-normal text-[#1C1C1C]`}>Min</p>
-                            <input type="number" className={`${inter.className} w-27.25 h-10 border border-[#DEE2E7] rounded-md pl-2 text-[14px] font-normal text-[#BDC4CD] focus:outline-none focus:ring-2 focus:ring-[#0D6EFD] focus:border-transparent`} placeholder='0' />
+                            <input 
+                                type="number" 
+                                className={`${inter.className} w-27.25 h-10 border border-[#DEE2E7] rounded-md pl-2 text-[14px] font-normal text-[#BDC4CD] focus:outline-none focus:ring-2 focus:ring-[#0D6EFD] focus:border-transparent`} 
+                                placeholder='0'
+                                onChange={(e) => handlePriceChange('min', parseFloat(e.target.value) || 0)}
+                            />
                         </div>
                         <div className='mt-2'>
                             <p className={`${inter.className} text-[16px] font-normal text-[#1C1C1C]`}>Max</p>
-                            <input type="number" className={`${inter.className} w-27.25 h-10 border border-[#DEE2E7] rounded-md pl-2 text-[14px] font-normal text-[#BDC4CD] focus:outline-none focus:ring-2 focus:ring-[#0D6EFD] focus:border-transparent`} placeholder='999999' />
+                            <input 
+                                type="number" 
+                                className={`${inter.className} w-27.25 h-10 border border-[#DEE2E7] rounded-md pl-2 text-[14px] font-normal text-[#BDC4CD] focus:outline-none focus:ring-2 focus:ring-[#0D6EFD] focus:border-transparent`} 
+                                placeholder='999999'
+                                onChange={(e) => handlePriceChange('max', parseFloat(e.target.value) || 999999)}
+                            />
                         </div>
                     </div>
 
-                    <button className={`${inter.className} w-full h-10 mt-5 rounded-md border border-[#DEE2E7] hover:shadow-sm hover:shadow-[#38383814] text-[16px] font-normal cursor-pointer`}>
+                    <button 
+                        onClick={() => setPage(1)}
+                        className={`${inter.className} w-full h-10 mt-5 rounded-md border border-[#DEE2E7] hover:shadow-sm hover:shadow-[#38383814] text-[16px] font-normal cursor-pointer`}
+                    >
                         <div className='w-full h-10 text-[16px] font-medium text-[#0D6EFD] text-center mt-1 cursor-pointer'>
                             Apply
                         </div>
@@ -377,7 +391,7 @@ const Page = () => {
             <main className='w-full space-y-7'>
                 {/* top */}
                 <section className='w-full h-15.5 flex justify-between bg-white border border-[#DEE2E7]'>
-                    <p className={`${inter.className} text-[16px] font-normal text-[#1C1C1C] ml-4 my-auto`}>12,911 items in <span className='font-semibold'>Mobile accessory</span></p>
+                    <p className={`${inter.className} text-[16px] font-normal text-[#1C1C1C] ml-4 my-auto`}>{totalItems} items found</p>
                     <div className='flex justify-between items-center gap-4 mr-5'>
                         <div className='flex justify-center'>
                             <input type='checkbox' className='w-4 h-4 mt-1 ml-2 text-[#0D6EFD] cursor-pointer' />
@@ -399,31 +413,62 @@ const Page = () => {
                         </div>
                     </div>
                 </section>
+                
+                {/* loading state */}
+                {isLoading && (
+                    <div className='flex justify-center items-center h-64'>
+                        <p className={`${inter.className} text-[16px] text-[#8B96A5]`}>Loading products...</p>
+                    </div>
+                )}
+                
+                {/* error state */}
+                {error && (
+                    <div className='flex justify-center items-center h-64'>
+                        <p className={`${inter.className} text-[16px] text-red-500`}>{error}</p>
+                    </div>
+                )}
+                
                 {/* products list */}
-                <div className={`space-y-3 ${viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6' : ''}`}>
-                    {sortedProducts.map((product, index) => (
-                        <MemoizedProductCard key={index} product={product} />
-                    ))}
-                </div>
+                {!isLoading && !error && (
+                    <div className={`space-y-3 ${viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6' : ''}`}>
+                        {products.map((product, index) => (
+                            <MemoizedProductCard key={index} product={product} />
+                        ))}
+                    </div>
+                )}
+                
                 {/* content bottom */}
                 <div className='flex gap-3 w-87.5 float-right mr-2'>
                     <select className={`${inter.className} w-36 h-10 p-2 pr-4 text-[#1C1C1C] text-[16px] border border-[#DEE2E7] bg-[#FFFFFF] rounded-md focus:outline-none focus:ring-2 focus:ring-[#0D6EFD] focus:border-transparent focus:h-9.25 focus:w-36 ml-4 cursor-pointer `}>
                         <option >Show 10</option>
                     </select>
                     <div className='h-10 flex justify-center items-center float-right rounded-md '>
-                        <button className='w-11 h-10 text-[16px] font-medium focus:text-[#8B96A5] focus:bg-[#EFF2F4] bg-[#FFFFFF] border border-[#DEE2E7] rounded-l-md flex justify-center items-center text-[#1C1C1C] cursor-pointer'>
+                        <button 
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            disabled={page === 1}
+                            className='w-11 h-10 text-[16px] font-medium focus:text-[#8B96A5] focus:bg-[#EFF2F4] bg-[#FFFFFF] border border-[#DEE2E7] rounded-l-md flex justify-center items-center text-[#1C1C1C] cursor-pointer disabled:opacity-50'
+                        >
                             <IoIosArrowBack className='w-5 h-5' />
                         </button>
                         <button className='w-11 h-10 text-[16px] font-medium focus:text-[#8B96A5] focus:bg-[#EFF2F4] bg-[#FFFFFF] border border-[#DEE2E7]  flex justify-center items-center text-[#1C1C1C] cursor-pointer'>
-                            1
+                            {page}
                         </button>
-                        <button className='w-11 h-10 text-[16px] font-medium focus:text-[#8B96A5] focus:bg-[#EFF2F4] bg-[#FFFFFF] border border-[#DEE2E7]  flex justify-center items-center text-[#1C1C1C] cursor-pointer'>
-                            2
+                        <button 
+                            onClick={() => setPage(p => p + 1)}
+                            className='w-11 h-10 text-[16px] font-medium focus:text-[#8B96A5] focus:bg-[#EFF2F4] bg-[#FFFFFF] border border-[#DEE2E7]  flex justify-center items-center text-[#1C1C1C] cursor-pointer'
+                        >
+                            {page + 1}
                         </button>
-                        <button className='w-11 h-10 text-[16px] font-medium focus:text-[#8B96A5] focus:bg-[#EFF2F4] bg-[#FFFFFF] border border-[#DEE2E7]  flex justify-center items-center text-[#1C1C1C] cursor-pointer'>
-                            3
+                        <button 
+                            onClick={() => setPage(p => p + 2)}
+                            className='w-11 h-10 text-[16px] font-medium focus:text-[#8B96A5] focus:bg-[#EFF2F4] bg-[#FFFFFF] border border-[#DEE2E7]  flex justify-center items-center text-[#1C1C1C] cursor-pointer'
+                        >
+                            {page + 2}
                         </button>
-                        <button className='w-11 h-10 text-[16px] font-medium focus:text-[#8B96A5] focus:bg-[#EFF2F4] bg-[#FFFFFF] border border-[#DEE2E7] rounded-r-md flex justify-center items-center text-[#1C1C1C] cursor-pointer'>
+                        <button 
+                            onClick={() => setPage(p => p + 1)}
+                            className='w-11 h-10 text-[16px] font-medium focus:text-[#8B96A5] focus:bg-[#EFF2F4] bg-[#FFFFFF] border border-[#DEE2E7] rounded-r-md flex justify-center items-center text-[#1C1C1C] cursor-pointer'
+                        >
                             <IoIosArrowForward className='w-5 h-5' />
                         </button>
                     </div>
