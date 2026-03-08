@@ -1,0 +1,17 @@
+node_modules
+.next
+.out
+.git
+.gitignore
+.env
+.env.local
+.env*.local
+*.log
+.vscode
+.idea
+*.md
+.DS_Store
+coverage
+.nyc_output
+vercel.json
+!vercel.example.json
