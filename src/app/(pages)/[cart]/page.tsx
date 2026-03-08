@@ -1,89 +1,56 @@
 "use client";
 
-import { useEffect, useState } from 'react';
 import { Inter } from 'next/font/google';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useCartStore } from '@/store/cartStore';
-import { FaArrowLeft, FaTruckMoving } from 'react-icons/fa6';
+import { useCart } from '@/context/CartContext';
 import { BsChatLeftTextFill } from 'react-icons/bs';
-import { MdLock } from 'react-icons/md';
+import { FaArrowLeft, FaTruckMoving } from 'react-icons/fa6';
+import { MdLock, MdShoppingCart } from 'react-icons/md';
 
 const inter = Inter({ subsets: ['latin'] });
 
-interface ICartItem {
-  _id: string;
-  product: {
-    _id: string;
-    name: string;
-    images: string[];
-    price: number;
-    discountPrice?: number;
-  };
-  quantity: number;
-  price: number;
-}
-
-interface ICart {
-  _id: string;
-  items: ICartItem[];
-  totalPrice: number;
-}
-
 const Cart = () => {
   const router = useRouter();
-  const { cart, fetchCart, updateQuantity, removeFromCart, isLoading } = useCartStore();
-  const [localCart, setLocalCart] = useState<ICart | null>(null);
+  const { cartItems, removeFromCart, increaseQuantity, decreaseQuantity, clearCart, getCartTotal } = useCart();
 
-  useEffect(() => {
-    const loadCart = async () => {
-      await fetchCart();
-    };
-    loadCart();
-  }, []);
-
-  useEffect(() => {
-    if (cart) {
-      setLocalCart(cart);
-    }
-  }, [cart]);
-
-  const handleQuantityChange = async (productId: string, newQuantity: number) => {
-    if (newQuantity < 1) return;
-    try {
-      await updateQuantity(productId, newQuantity);
-    } catch (error) {
-      console.error('Failed to update quantity:', error);
-    }
-  };
-
-  const handleRemove = async (productId: string) => {
-    try {
-      await removeFromCart(productId);
-    } catch (error) {
-      console.error('Failed to remove item:', error);
-    }
-  };
-
-  const handleSaveForLater = (productId: string) => {
-    // Implement save for later functionality
-    alert('Save for later feature coming soon!');
-  };
+  const savedForLater = [
+    {
+      name: "GoPro HERO6 4K Action Camera - Black",
+      image: "/smartphones.png",
+      price: "99.50",
+    },
+    {
+      name: "GoPro HERO6 4K Action Camera - Black",
+      image: "/smartphone3.png",
+      price: "99.50",
+    },
+    {
+      name: "GoPro HERO6 4K Action Camera - Black",
+      image: "/smart_watches.png",
+      price: "99.50",
+    },
+    {
+      name: "GoPro HERO6 4K Action Camera - Black",
+      image: "/laptops.png",
+      price: "99.50",
+    },
+  ];
 
   const features = [
     {
       name: "Secure payment",
-      description: "Your payments are secure",
+      description: "Have you ever finally just ",
       icon: <MdLock className="w-5 h-5.25 text-[#8B96A5]" />,
     },
     {
       name: "Customer support",
-      description: "24/7 customer support",
+      description: "Have you ever finally just ",
       icon: <BsChatLeftTextFill className="w-5 h-5.25 text-[#8B96A5]" />,
     },
     {
       name: "Free delivery",
-      description: "Free shipping on orders over $50",
+      description: "Have you ever finally just ",
       icon: <FaTruckMoving className="w-5 h-5.25 text-[#8B96A5]" />,
     },
   ];
@@ -96,29 +63,19 @@ const Cart = () => {
     { name: "Apple Pay", image: "/apple_pay.png" },
   ];
 
-  if (isLoading || !localCart) {
-    return (
-      <div className="flex justify-center items-center h-64 mt-10">
-        <p className={`${inter.className} text-[16px] text-[#8B96A5]`}>Loading cart...</p>
-      </div>
-    );
-  }
-
-  const subtotal = localCart.totalPrice;
-  const discount = 0; // Could implement coupon logic
-  const tax = subtotal * 0.1; // 10% tax
+  const subtotal = getCartTotal();
+  const discount = 0;
+  const tax = subtotal * 0.01;
   const total = subtotal + tax - discount;
 
   return (
     <div className='mt-10'>
       <div className='flex gap-5'>
         <div className='w-190'>
-          <h1 className={`${inter.className} text-[#1C1C1C] text-[24px]`}>
-            My cart ({localCart.items.length})
-          </h1>
+          <h1 className={`${inter.className} text-[#1C1C1C] text-[24px]`}>My cart ({cartItems.length})</h1>
           
-          {localCart.items.length === 0 ? (
-            <div className='w-190 h-60 border border-[#DEE2E7] mt-10 flex flex-col justify-center items-center'>
+          {cartItems.length === 0 ? (
+            <div className='w-190 h-60 border border-[#DEE2E7] mt-10 flex flex-col justify-center items-center bg-white rounded-md'>
               <p className={`${inter.className} text-[16px] text-[#8B96A5]`}>Your cart is empty</p>
               <button
                 onClick={() => router.push('/products')}
@@ -128,17 +85,14 @@ const Cart = () => {
               </button>
             </div>
           ) : (
-            <div className='w-190 border border-[#DEE2E7] mt-10 rounded-md overflow-hidden'>
+            <div className='w-190 h-auto border border-[#DEE2E7] mt-10 bg-white rounded-md'>
               <div>
-                {localCart.items.map((item, index) => (
-                  <div 
-                    key={item._id || index} 
-                    className='flex w-full py-5 px-5 border-b border-[#DEE2E7] last:border-b-0'
-                  >
+                {cartItems.map((product, index) => (
+                  <div key={index} className='flex w-179 h-auto mx-auto my-auto py-5 px-5 border-b border-[#DEE2E7] last:border-b-0'>
                     <div className='w-20 h-20 border border-[#E0E0E0] rounded-md bg-[#F7F7F7] p-1'>
                       <Image 
-                        src={item.product.images[0] || '/home/product_placeholder.png'} 
-                        alt={item.product.name} 
+                        src={product.image || '/home/product_placeholder.png'} 
+                        alt={product.name} 
                         width={80} 
                         height={80} 
                         className='w-full h-full object-cover' 
@@ -147,39 +101,52 @@ const Cart = () => {
                     <div className='flex justify-between w-full ml-5'>
                       <div className='flex flex-col'>
                         <h2 className={`${inter.className} w-115.5 text-[#1C1C1C] font-medium text-[16px]`}>
-                          {item.product.name}
+                          {product.name}
                         </h2>
-                        <p className={`${inter.className} w-74.75 text-[#6C757D] text-[14px] font-normal`}>
-                          Price: ${item.price.toFixed(2)}
-                        </p>
+                        {product.description && (
+                          <p className={`${inter.className} w-74.75 text-[#6C757D] text-[14px] font-normal`}>
+                            {product.description}
+                          </p>
+                        )}
                         <div className='flex gap-5 mt-2'>
                           <button 
-                            onClick={() => handleRemove(item.product._id)}
+                            onClick={() => removeFromCart(product.productId)}
                             className='w-17.5 h-7.5 rounded-md border border-[#DEE2E7] hover:shadow-sm hover:shadow-[#38383814] cursor-pointer text-[13px] font-medium text-[#FA3434]'
                           >
                             Remove
                           </button>
                           <button 
-                            onClick={() => handleSaveForLater(item.product._id)}
+                            onClick={() => router.push(`/products/${product.productId}`)}
                             className='w-25.75 h-7.5 rounded-md border border-[#DEE2E7] hover:shadow-sm hover:shadow-[#38383814] cursor-pointer text-[13px] font-medium text-[#0D6EFD]'
                           >
-                            Save for later
+                            View details
                           </button>
                         </div>
                       </div>
-                      <div className='flex flex-col gap-3 mt-2'>
-                        <span className={`${inter.className} text-[#1C1C1C] text-[14px]`}>
-                          ${(item.price * item.quantity).toFixed(2)}
+                      <div className='flex flex-col gap-3 mt-2 items-end'>
+                        <span className={`${inter.className} text-[#1C1C1C] text-[14px] font-semibold`}>
+                          ${(product.discountPrice || product.price).toFixed(2)}
                         </span>
-                        <select 
-                          value={item.quantity}
-                          onChange={(e) => handleQuantityChange(item.product._id, parseInt(e.target.value))}
-                          className={`${inter.className} w-30.75 h-10 px-3 border border-[#DEE2E7] rounded-md text-[#1C1C1C] text-[16px]`}
-                        >
-                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(qty => (
-                            <option key={qty} value={qty}>Qty: {qty}</option>
-                          ))}
-                        </select>
+                        <div className='flex items-center gap-2 border border-[#DEE2E7] rounded-md'>
+                          <button
+                            onClick={() => decreaseQuantity(product.productId)}
+                            className={`${inter.className} w-8 h-8 text-[16px] text-[#1C1C1C] hover:bg-[#F8F9FA] rounded-l-md flex items-center justify-center`}
+                          >
+                            -
+                          </button>
+                          <span className={`${inter.className} text-[14px] text-[#1C1C1C] w-8 text-center`}>
+                            {product.quantity}
+                          </span>
+                          <button
+                            onClick={() => increaseQuantity(product.productId)}
+                            className={`${inter.className} w-8 h-8 text-[16px] text-[#1C1C1C] hover:bg-[#F8F9FA] rounded-r-md flex items-center justify-center`}
+                          >
+                            +
+                          </button>
+                        </div>
+                        <span className={`${inter.className} text-[#1C1C1C] text-[14px] font-semibold`}>
+                          Total: ${((product.discountPrice || product.price) * product.quantity).toFixed(2)}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -188,16 +155,14 @@ const Cart = () => {
               <div className='flex justify-between p-5 bg-[#F8F9FA]'>
                 <button 
                   onClick={() => router.push('/products')}
-                  className='w-38.25 h-10 flex gap-2 p-2 bg-[#127FFF] hover:bg-[#0067FF] rounded-md mt-3 text-white cursor-pointer'
+                  className='w-38.25 h-10 flex gap-2 p-2 bg-[#127FFF] hover:bg-[#0067FF] rounded-md text-white cursor-pointer'
                 >
                   <FaArrowLeft size={15} className='w-[14.67px] h-[14.67px] mt-1' />
                   <p className={`${inter.className} text-[16px] font-medium`}>Back to shop</p>
                 </button>
                 <button 
-                  onClick={() => {
-                    localCart.items.forEach(item => handleRemove(item.product._id));
-                  }}
-                  className='w-28.75 h-10 flex gap-2 p-2 bg-[#FFFFFF] border border-[#DEE2E7] hover:bg-[#dce8fa] rounded-md mt-3 text-[#0D6EFD] cursor-pointer'
+                  onClick={clearCart}
+                  className='w-28.75 h-10 flex gap-2 p-2 bg-[#FFFFFF] border border-[#DEE2E7] hover:bg-[#dce8fa] rounded-md text-[#0D6EFD] cursor-pointer'
                 >
                   <p className={`${inter.className} text-[16px] text-center mx-auto font-medium`}>Remove all</p>
                 </button>
@@ -220,7 +185,7 @@ const Cart = () => {
           </div>
         </div>
         
-        {localCart.items.length > 0 && (
+        {cartItems.length > 0 && (
           <div>
             <div className='w-70 h-27.25 border border-[#DEE2E7] bg-white p-3 mt-19 rounded-md'>
               <h3 className={`${inter.className} text-[16px] text-[#505050] font-normal`}>Have a coupon?</h3>
@@ -234,7 +199,7 @@ const Cart = () => {
                 </button>
               </div>
             </div>
-            <div className='w-70 h-75.5 space-y-2 border border-[#DEE2E7] p-3 mt-3 rounded-md bg-white'>
+            <div className='w-70 h-auto space-y-2 border border-[#DEE2E7] p-3 mt-3 rounded-md bg-white'>
               <div className='flex justify-between w-full'>
                 <p className={`${inter.className} text-[16px] text-[#505050] font-normal`}>Subtotal:</p>
                 <p className={`${inter.className} text-[16px] text-[#505050] font-normal`}>${subtotal.toFixed(2)}</p>
@@ -271,6 +236,38 @@ const Cart = () => {
           </div>
         )}
       </div>
+
+      {/* save for later */}
+      <section className='h-auto w-full rounded-md border border-[#DEE2E7] bg-white mt-10 px-4 py-6'>
+        <h1 className={`${inter.className} text-[20px] text-[#1C1C1C] font-semibold`}>Saved for later</h1>
+        <main className='mt-3 flex gap-5 overflow-x-auto'>
+          {savedForLater.map((product, index) => (
+            <div key={index} className='min-w-[240px]'>
+              <Image src={`/home${product.image}`} alt={product.name} width={250} height={240} className='w-60.75 h-60 bg-[#EEEEEE] rounded-md object-cover' />
+              <p className={`${inter.className} text-[16px] text-[#1C1C1C] font-medium mt-5`}>${product.price}</p>
+              <p className={`${inter.className} text-[18px] font-normal text-[#606060]`}>{product.name}</p>
+              <button className='flex items-center justify-center gap-3 w-[156.58px] h-10 rounded-md border border-[#DEE2E7] text-[#0D6EFD] cursor-pointer mt-3 hover:bg-[#E5F1FF]'>
+                <MdShoppingCart size={18} />
+                <p className={`${inter.className} text-[16px] font-medium`}>Move to cart</p>
+              </button>
+            </div>
+          ))}
+        </main>
+      </section>
+
+      {/* discount */}
+      <section className='h-30 w-full flex justify-between rounded-md bg-[#005ADE] mt-10'>
+        <div className='bg-[#237CFF] w-186.25 h-full px-4 py-6'>
+          <h2 className={`${inter.className} text-[24px] ml-8 text-white font-semibold`}>Super discount on more than 100 USD</h2>
+          <p className={`${inter.className} text-white text-[16px] font-normal ml-8`}>Have you ever finally just write dummy info</p>
+        </div>
+        <button 
+          onClick={() => router.push('/products')}
+          className='w-38.25 h-10 flex justify-center gap-2 text-center mr-10 mt-10 p-2 bg-[#FF9017] hover:bg-[#E68116] rounded-md text-white cursor-pointer'
+        >
+          <p className={`${inter.className} text-[16px] font-medium`}>Shop now</p>
+        </button>
+      </section>
     </div>
   );
 };

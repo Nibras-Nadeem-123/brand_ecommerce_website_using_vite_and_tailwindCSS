@@ -9,7 +9,7 @@ import { FaStar } from 'react-icons/fa6'
 import { IoIosArrowBack, IoIosArrowForward, IoIosArrowUp, IoIosHeartEmpty } from 'react-icons/io'
 import { IoGridSharp } from 'react-icons/io5'
 import { VscThreeBars } from 'react-icons/vsc'
-import { useCartStore } from '@/store/cartStore';
+import { useCart } from '@/context/CartContext';
 import { useAuthStore } from '@/store/authStore';
 
 const inter = Inter({ subsets: ['latin'], weight: '400' })
@@ -30,7 +30,7 @@ interface IProduct {
 
 const Page = () => {
     const router = useRouter();
-    const { addToCart } = useCartStore();
+    const { addToCart: contextAddToCart } = useCart();
     const { isAuthenticated } = useAuthStore();
     
     const [selectedCategories, setSelectedCategories] = useState<string[]>([])
@@ -146,17 +146,20 @@ const Page = () => {
         setSelectedCondition(condition);
     }
 
-    const handleAddToCart = async (productId: string) => {
+    const handleAddToCart = (product: IProduct) => {
         if (!isAuthenticated) {
             router.push('/login');
             return;
         }
-        try {
-            await addToCart(productId, 1);
-            alert('Added to cart!');
-        } catch (err) {
-            console.error('Failed to add to cart:', err);
-        }
+        contextAddToCart({
+            productId: product._id,
+            name: product.name,
+            price: product.price,
+            discountPrice: product.discountPrice,
+            image: product.images[0] || '/home/product_placeholder.png',
+            description: product.description,
+        });
+        alert('Added to cart!');
     };
 
     const handleViewDetails = (productId: string) => {
@@ -222,7 +225,7 @@ const Page = () => {
                         </p>
                     </div>
                     <button
-                        onClick={() => handleAddToCart(product._id)}
+                        onClick={() => handleAddToCart(product)}
                         className={`${inter.className} w-32 h-10 mt-3 bg-[#0D6EFD] hover:bg-[#0056b3] text-white text-[14px] font-medium rounded-md cursor-pointer`}
                     >
                         Add to cart

@@ -6,7 +6,7 @@ import { Inter } from 'next/font/google';
 import Image from 'next/image';
 import { FaStar } from 'react-icons/fa6';
 import { IoIosHeartEmpty, IoIosArrowBack } from 'react-icons/io';
-import { useCartStore } from '@/store/cartStore';
+import { useCart } from '@/context/CartContext';
 import { useAuthStore } from '@/store/authStore';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -31,7 +31,7 @@ export default function ProductDetails() {
     const params = useParams();
     const router = useRouter();
     const id = params.id as string;
-    const { addToCart } = useCartStore();
+    const { addToCart } = useCart();
     const { isAuthenticated } = useAuthStore();
 
     const [product, setProduct] = useState<IProduct | null>(null);
@@ -61,29 +61,39 @@ export default function ProductDetails() {
         }
     }, [id]);
 
-    const handleAddToCart = async () => {
+    const handleAddToCart = () => {
         if (!isAuthenticated) {
             router.push('/login');
             return;
         }
-        try {
-            await addToCart(id, quantity);
+        if (product) {
+            addToCart({
+                productId: product._id,
+                name: product.name,
+                price: product.price,
+                discountPrice: product.discountPrice,
+                image: product.images[0] || '/home/product_placeholder.png',
+                description: product.description,
+            });
             alert('Added to cart!');
-        } catch (err) {
-            console.error('Failed to add to cart:', err);
         }
     };
 
-    const handleBuyNow = async () => {
+    const handleBuyNow = () => {
         if (!isAuthenticated) {
             router.push('/login');
             return;
         }
-        try {
-            await addToCart(id, quantity);
+        if (product) {
+            addToCart({
+                productId: product._id,
+                name: product.name,
+                price: product.price,
+                discountPrice: product.discountPrice,
+                image: product.images[0] || '/home/product_placeholder.png',
+                description: product.description,
+            });
             router.push('/cart');
-        } catch (err) {
-            console.error('Failed to add to cart:', err);
         }
     };
 

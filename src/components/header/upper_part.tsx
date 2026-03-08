@@ -8,14 +8,14 @@ import { GoHeartFill } from 'react-icons/go'
 import { HiOutlineShoppingBag } from 'react-icons/hi2'
 import { MdShoppingCart } from 'react-icons/md'
 import { useAuthStore } from '@/store/authStore'
-import { useCartStore } from '@/store/cartStore'
+import { useCart } from '@/context/CartContext'
 
 const inter = Inter({ subsets: ['latin'], weight: '400' })
 
 const UpperPart = () => {
     const router = useRouter();
     const { user, isAuthenticated, logout, fetchUser } = useAuthStore();
-    const { cart } = useCartStore();
+    const { getCartCount } = useCart();
     const [searchQuery, setSearchQuery] = useState('');
     const [searchCategory, setSearchCategory] = useState('all');
 
@@ -44,7 +44,7 @@ const UpperPart = () => {
         router.push('/');
     };
 
-    const cartItemCount = cart?.items?.reduce((total, item) => total + item.quantity, 0) || 0;
+    const cartItemCount = getCartCount();
 
     return (
         <div className='flex bg-white h-21.5 text-white px-35.5'>
