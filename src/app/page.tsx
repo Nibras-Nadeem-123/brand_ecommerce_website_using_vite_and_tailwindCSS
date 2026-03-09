@@ -10,7 +10,7 @@ import Service_section from "@components/home/service_section";
 
 export default function Home() {
   return (
-    <div className="grid grid-cols-1 gap-10 p-5 bg-gray-50 shadow-lg rounded-lg">
+    <div className="grid grid-cols-1 gap-10 p-5">
       <Main_section />
       <Sale_section />
       <Home_outdoor />

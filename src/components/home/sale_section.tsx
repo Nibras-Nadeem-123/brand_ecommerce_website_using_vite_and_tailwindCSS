@@ -1,58 +1,65 @@
+"use client";
+
 import { Inter } from 'next/font/google'
 import Image from 'next/image'
-import React from 'react'
-
-class Product {
-    name: string
-    image: string
-    discount: string
-    style: string
-    constructor(name: string, image: string, discount: string, style: string) {
-        this.name = name
-        this.image = image
-        this.discount = discount
-        this.style = style
-    }
-}
+import React, { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 const inter = Inter({ subsets: ['latin'] })
 
-const Sale_section = () => {
+interface IProduct {
+    _id: string;
+    name: string;
+    price: number;
+    discountPrice?: number;
+    images: string[];
+}
 
-    const items: Product[] = [
-        {
-            name: "Smart watches",
-            image: "/smart_watches.png",
-            discount: "-25%",
-            style: 'w-[101.42px] h-[121.33px] mt-[9.33px]',
-        },
-        {
-            name: "Laptops",
-            image: "/laptops.png",
-            discount: "-15%",
-            style: 'w-[126.31px] h-[99.56px] mt-[20.53px]',
-        },
-        {
-            name: "GoPro cameras",
-            image: "/camera.png",
-            discount: "-40%",
-            style: 'w-[129.42px] h-[91.47px] mt-[24.27px]',
-        },
-        {
-            name: "Headphones",
-            image: "/headphones.png",
-            discount: "-25%",
-            style: 'w-[112.62px] h-[128.18px] mt-[6.22px]',
-        },
-        {
-            name: "Canon camreras",
-            image: "/canon_camreras.png",
-            discount: "-25%",
-            style: 'w-[125.07px] h-[125.07px] mt-[7.47px]',
-        },
-    ]
+const Sale_section = () => {
+    const router = useRouter();
+    const [items, setItems] = useState<IProduct[]>([]);
+
+    useEffect(() => {
+        const fetchProducts = async () => {
+            try {
+                const response = await fetch('/api/products?limit=5');
+                const data = await response.json();
+                if (data.success) {
+                    setItems(data.data);
+                }
+            } catch (error) {
+                console.error('Error fetching sale products:', error);
+            }
+        };
+
+        fetchProducts();
+    }, []);
+
+    const handleProductClick = (productId: string) => {
+        router.push(`/product/${productId}`);
+    };
+
+    const getImageStyle = (index: number): string => {
+        const styles = [
+            'w-[101.42px] h-[121.33px] mt-[9.33px]',
+            'w-[126.31px] h-[99.56px] mt-[20.53px]',
+            'w-[129.42px] h-[91.47px] mt-[24.27px]',
+            'w-[112.62px] h-[128.18px] mt-[6.22px]',
+            'w-[125.07px] h-[125.07px] mt-[7.47px]',
+        ];
+        return styles[index % styles.length];
+    };
+
+    const getDiscount = (product: IProduct): string => {
+        if (product.discountPrice && product.price > product.discountPrice) {
+            const discount = Math.round(((product.price - product.discountPrice) / product.price) * 100);
+            return `-${discount}%`;
+        }
+        return '-20%';
+    };
+
     return (
-        <div className='flex h-60 border border-[#DEE2E7] rounded-md bg-white'>
+        <div className='flex h-60 w-full border border-[#DEE2E7] rounded-md bg-white'>
             {/* Deals and offers */}
             <div className='w-71.25 h-58.75 px-4 py-5'>
                 <main className='w-49.5 h-28.25 '>
@@ -81,14 +88,13 @@ const Sale_section = () => {
 
             {/* Products */}
             <div className='flex w-223.75 h-58.75'>
-                {/* Item */}
                 {items.map((product, index) => (
-                    <div key={index} className='pt-2 px-3.5 border-l border-[#DEE2E7]'>
+                    <div key={product._id} className='pt-2 px-2.75 border-l border-[#DEE2E7]' onClick={() => handleProductClick(product._id)}>
                         <div className='w-35 h-35 flex justify-center items-center mb-3.75'>
-                            <Image src={`/home${product.image}`} alt={product.name} height={200} width={200} className={product.style} />
+                            <Image src={product.images[0] || "/placeholder.png"} alt={product.name} height={200} width={200} className={getImageStyle(index)} />
                         </div>
                         <h2 className={`${inter.className} text-[16px] text-[#1C1C1C] text-center font-normal`}>{product.name}</h2>
-                        <p className={`${inter.className} w-15.25 h-7 bg-[#FFE3E3] rounded-[29px] px-3.25 py-1 mt-2 text-[14px] text-[#EB001B] ml-9.25 text-center font-medium`}>{product.discount}</p>
+                        <p className={`${inter.className} w-15.25 h-7 bg-[#FFE3E3] rounded-[29px] px-3.25 py-1 mt-2 text-[14px] text-[#EB001B] ml-9.25 text-center font-medium`}>{getDiscount(product)}</p>
                     </div>
                 ))}
             </div>

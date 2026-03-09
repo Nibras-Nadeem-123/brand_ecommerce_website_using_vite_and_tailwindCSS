@@ -1,61 +1,44 @@
+"use client";
+
 import { Inter } from 'next/font/google'
 import Image from 'next/image'
-import React from 'react'
+import React, { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 const inter = Inter({ subsets: ['latin'] })
 
-const Home_outdoor = () => {
+interface IProduct {
+    _id: string;
+    name: string;
+    price: number;
+    discountPrice?: number;
+    images: string[];
+}
 
-    const products = [
-        {
-            name: "Soft chairs",
-            image: "/soft_chairs.png",
-            prics: "19",
-            className: "",
-        },
-        {
-            name: "Kitchen mixer",
-            image: "/kitchen_mixer.png",
-            prics: "100",
-            className: "",
-        },
-        {
-            name: "Sofa & chair",
-            image: "/lamp.png",
-            prics: "19",
-            className: "",
-        },
-        {
-            name: "Kitchen dishes",
-            image: "/kitchen_dishes.png",
-            prics: "19",
-            className: "",
-        },
-        {
-            name: "Blenders",
-            image: "/blenders.png",
-            prics: "39",
-            className: "",
-        },
-        {
-            name: "Home appliance",
-            image: "/home_appliances.jpg",
-            prics: "19",
-            className: "",
-        },
-        {
-            name: "Coffee maker",
-            image: "/plant_pot.png",
-            prics: "10",
-            className: "",
-        },
-        {
-            name: "Smart watches",
-            image: "/soil_pot.png",
-            prics: "19",
-            className: "",
-        },
-    ]
+const Home_outdoor = () => {
+    const router = useRouter();
+    const [products, setProducts] = useState<IProduct[]>([]);
+
+    useEffect(() => {
+        const fetchProducts = async () => {
+            try {
+                const response = await fetch('/api/products?category=Home&limit=8');
+                const data = await response.json();
+                if (data.success) {
+                    setProducts(data.data);
+                }
+            } catch (error) {
+                console.error('Error fetching home products:', error);
+            }
+        };
+
+        fetchProducts();
+    }, []);
+
+    const handleProductClick = (productId: string) => {
+        router.push(`/product/${productId}`);
+    };
+
     return (
         <div className='flex gap-0 h-64.5 bg-white border border-[#DEE2E7] rounded-md'>
             {/* Home_outdoor */}
@@ -82,13 +65,13 @@ const Home_outdoor = () => {
 
             <div className='grid grid-cols-4 w-full h-full'>
                 {products.map((product, index) => (
-                    <div key={index} className={`w-full pl-3 pr-3 border-[0.5px] border-[#DEE2E7]`}>
+                    <div key={product._id} className={`w-full pl-3 pr-3 border-[0.5px] border-[#DEE2E7]`} onClick={() => handleProductClick(product._id)}>
                         <div className='flex justify-between'>
                             <div className='mt-4'>
                                 <p className={`${inter.className} absolute w-full text-[16px] text-[#1C1C1C] font-normal`}>{product.name}</p>
-                                <p className={`${inter.className} text-[13px] mt-6 text-[#8B96A5] font-normal`}>From <br/> USD {product.prics}</p>
+                                <p className={`${inter.className} text-[13px] mt-6 text-[#8B96A5] font-normal`}>From <br/> USD {(product.discountPrice || product.price).toFixed(0)}</p>
                             </div>
-                            <Image src={`/home${product.image}`} alt={product.name} height={69.24} width={66.69} className='w-20 h-20 object-cover mt-11' />
+                            <Image src={product.images[0] || "/placeholder.png"} alt={product.name} height={69.24} width={66.69} className='w-20 h-20 object-cover mt-11' />
                         </div>
                     </div>
                 ))}
